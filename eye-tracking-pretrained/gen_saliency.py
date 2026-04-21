@@ -54,7 +54,7 @@ if __name__ == "__main__":
     model = load_model(dense=False)
 
     saliency_map = generate_saliency(
-        image_path="./images/original.jpeg",
+        image_path="./../images/original.jpeg",
         model=model,
     )
 
