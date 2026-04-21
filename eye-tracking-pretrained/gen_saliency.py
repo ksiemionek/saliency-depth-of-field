@@ -50,11 +50,6 @@ def generate_saliency(image_path, model):
     return saliency_map
 
 
-def save_saliency(saliency_map: np.ndarray, output_path: str) -> None:
-    cv2.imwrite(output_path, saliency_map, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
-    print(f"Saved saliency map: {output_path}")
-
-
 if __name__ == "__main__":
     model = load_model(dense=False)
 
