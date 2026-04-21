@@ -1,23 +1,27 @@
 # Object oriented
 
-### Original image
+## Original image
+
 [image](./original.jpeg)
 
-### Depth map
+## Depth map
+
 Generated using Depth-Anything-V2.
 
 ![image](./depth.png)
 
-### Saliency map
+## Saliency map
+
 Generated using InSPYReNet.
 
 ![image](./saliency.png)
 
-### Blur mask
+## Blur mask
+
 Result of merging depth and saliency maps.
 
 ![image](./blur_mask_inv.png)
 
-### Result
+## Result
 
 ![image](./result.png)
