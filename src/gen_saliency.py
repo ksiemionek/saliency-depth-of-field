@@ -19,8 +19,8 @@ def load_model(dense=True):
         from TranSalNet.TranSalNet_Res import TranSalNet
 
     model = TranSalNet()
-    model.load_state_dict(
-        torch.load(".TranSalNet/pretrained_models/TranSalNet_Dense.pth",
+    model.load_state_dict(torch.load(
+        f"./TranSalNet/pretrained_models/TranSalNet_{'Dense' if dense else 'Res'}.pth",
         map_location=device
     ))
     model = model.to(device)
@@ -54,4 +54,4 @@ if __name__ == "__main__":
         model=model,
     )
 
-    cv2.imwrite("./result/saliency_dense.png", saliency_map, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+    cv2.imwrite("./results/saliency_dense.png", saliency_map, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])

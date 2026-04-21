@@ -53,4 +53,4 @@ if __name__ == "__main__":
         model=model,
     )
 
-    cv2.imwrite("./result/depth_pro.png", depth, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+    cv2.imwrite("./results/depth_anything.png", depth, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
