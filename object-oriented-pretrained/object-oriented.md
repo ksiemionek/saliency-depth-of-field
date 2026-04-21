@@ -1,27 +1,7 @@
-# Object oriented
+# Eye tracking
 
-## Original image
-
-[image](./original.jpeg)
-
-## Depth map
-
-Generated using Depth-Anything-V2.
-
-![image](./depth.png)
-
-## Saliency map
-
-Generated using InSPYReNet.
-
-![image](./saliency.png)
-
-## Blur mask
-
-Result of merging depth and saliency maps.
-
-![image](./blur_mask_inv.png)
+Based on InSPyReNet library - transparent-background
 
 ## Result
 
-![image](./result.png)
+![image](./result/saliency_object_oriented.png)
