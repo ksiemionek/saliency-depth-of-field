@@ -21,7 +21,7 @@ def blend_maps(depth, saliency):
     return blur_mask
 
 
-def run(image_path, output_path, dense=True, alpha=0.7):
+def run(image_path, dense=True):
     saliency_model = load_saliency_model(dense=dense)
     depth_processor, depth_model = load_depth_model()
 
@@ -29,14 +29,13 @@ def run(image_path, output_path, dense=True, alpha=0.7):
     depth = generate_depth(image_path, depth_processor, depth_model)
     blur_mask = blend_maps(depth, saliency)
 
-    cv2.imwrite(output_path, blur_mask, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
-
-    # return saliency, depth, blur_mask
+    return saliency, depth, blur_mask
 
 
 if __name__ == "__main__":
-    run(
+    _, _, blur_mask = run(
         image_path="./../images/original.jpeg",
-        output_path="./results/blur_mask.png",
         dense=True
     )
+
+    cv2.imwrite("./results/blur_mask.png", blur_mask, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
