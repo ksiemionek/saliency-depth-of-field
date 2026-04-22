@@ -3,13 +3,7 @@ import cv2
 import torch
 from torchvision import transforms
 from TranSalNet.utils.data_process import preprocess_img, postprocess_img
-
-if torch.cuda.is_available():
-    device = torch.device("cuda")
-elif torch.backends.mps.is_available():
-    device = torch.device("mps")
-else:
-    device = torch.device("cpu")
+from device import device
 
 
 def load_model(dense=True):
