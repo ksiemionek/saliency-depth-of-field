@@ -49,4 +49,4 @@ in `densenet.py` and `resnet.py` files.
 
 ### Result
 
-![image](./results/reuslt.png)
+![image](./results/result.png)
