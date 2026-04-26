@@ -1,8 +1,8 @@
 import cv2
 import torch
-from PIL import Image
 from transformers import AutoImageProcessor, AutoModelForDepthEstimation
 from device import device
+from utils import load_image
 
 
 def load_model():
@@ -13,9 +13,7 @@ def load_model():
     return image_processor, model
 
 
-def generate_depth(image_path, image_processor, model):
-    image = Image.open(image_path)
-
+def generate_depth(image, image_processor, model):
     inputs = image_processor(images=image, return_tensors="pt")
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
@@ -40,8 +38,10 @@ def generate_depth(image_path, image_processor, model):
 if __name__ == "__main__":
     image_processor, model = load_model()
 
+    image = load_image("./../images/original.jpeg")
+
     depth = generate_depth(
-        image_path="./../images/original.jpeg",
+        image=image,
         image_processor=image_processor,
         model=model,
     )
