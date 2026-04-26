@@ -38,14 +38,3 @@ def generate_saliency(image_path, model):
     saliency_map = postprocess_img(pred_pil, image_path)
 
     return saliency_map
-
-
-if __name__ == "__main__":
-    model = load_model(dense=True)
-
-    saliency_map = generate_saliency(
-        image_path="./../images/original.jpeg",
-        model=model,
-    )
-
-    cv2.imwrite("./results/saliency_dense.png", saliency_map, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])

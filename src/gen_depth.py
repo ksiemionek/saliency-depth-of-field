@@ -33,17 +33,3 @@ def generate_depth(image, image_processor, model):
     depth = depth.astype("uint8")
 
     return depth
-
-
-if __name__ == "__main__":
-    image_processor, model = load_model()
-
-    image = load_image("./../images/original.jpeg")
-
-    depth = generate_depth(
-        image=image,
-        image_processor=image_processor,
-        model=model,
-    )
-
-    cv2.imwrite("./results/depth_anything.png", depth, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
