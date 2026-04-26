@@ -23,7 +23,7 @@ def generate_depth(image, image_processor, model):
 
     post_processed_output = image_processor.post_process_depth_estimation(
         outputs,
-        target_sizes=[(image.height, image.width)],
+        target_sizes=[(image.shape[0], image.shape[1])],
     )
 
     predicted_depth = post_processed_output[0]["predicted_depth"]
