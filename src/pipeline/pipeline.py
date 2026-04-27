@@ -6,7 +6,7 @@ from blend_maps import blend_maps
 from utils import load_image
 
 
-IMAGE_PATH = "./../images/original.jpeg"
+IMAGE_PATH = "./../../images/original.jpeg"
 
 image = load_image(IMAGE_PATH)
 
