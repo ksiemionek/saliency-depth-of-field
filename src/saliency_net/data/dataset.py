@@ -5,14 +5,14 @@ from pathlib import Path
 
 
 class DUTOMRONDataset(Dataset):
-    def __init__(self, transform=None):
-        self.root_dir = Path('./DUT-OMRON')
-        self.transform = transform
+    def __init__(self, img_transform=None, heatmap_transform=None):
+        self.root_dir = Path('./data/DUT-OMRON')
+        self.img_transform = img_transform
+        self.heatmap_transform = heatmap_transform
 
         self.img_dir = self.root_dir / 'DUT-OMRON-image'
         self.img_list = sorted(self.img_dir.glob('*.jpg'))
         self.heatmap_dir = self.root_dir / 'DUT-OMRON-heatmaps'
-        
 
     def __len__(self):
         return len(self.img_list)
@@ -29,23 +29,24 @@ class DUTOMRONDataset(Dataset):
         
         sample = {'image': img, 'heatmap': heatmap}
 
-        if self.transform:
-            sample['image'] = self.transform(sample['image'])
-            sample['heatmap'] = self.transform(sample['heatmap'])
+        if self.img_transform:
+            sample['image'] = self.img_transform(sample['image'])
+        if self.heatmap_transform:
+            sample['heatmap'] = self.heatmap_transform(sample['heatmap'])
         
         return sample
 
 
 class SALICONDataset(Dataset):
-    def __init__(self, split='train', transform=None):
-        self.root_dir = Path('./SALICON')
+    def __init__(self, split, img_transform=None, heatmap_transform=None):
+        self.root_dir = Path('./data/SALICON')
         self.split = split
-        self.transform = transform
+        self.img_transform = img_transform
+        self.heatmap_transform = heatmap_transform
 
         self.img_dir = self.root_dir / 'images' / self.split
         self.img_list = sorted(self.img_dir.glob('*.jpg'))
         self.heatmap_dir = self.root_dir / 'maps' / self.split
-        
 
     def __len__(self):
         return len(self.img_list)
@@ -64,9 +65,9 @@ class SALICONDataset(Dataset):
             heatmap = Image.open(heatmap_path).convert('L')
             sample['heatmap'] = heatmap
         
-        if self.transform:
-            sample['image'] = self.transform(sample['image'])
-            if self.split in ['train', 'val']:
-                sample['heatmap'] = self.transform(sample['heatmap'])
+        if self.img_transform:
+            sample['image'] = self.img_transform(sample['image'])
+        if self.heatmap_transform:
+            sample['heatmap'] = self.heatmap_transform(sample['heatmap'])
         
         return sample
