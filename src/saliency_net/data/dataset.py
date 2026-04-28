@@ -2,6 +2,8 @@ from torch.utils.data import Dataset
 import torch
 from PIL import Image
 from pathlib import Path
+import random
+import torchvision.transforms.functional as TF
 
 
 class DUTOMRONDataset(Dataset):
@@ -58,13 +60,19 @@ class SALICONDataset(Dataset):
         img_path = self.img_list[idx]
         img = Image.open(img_path).convert('RGB')
 
-        sample = {'image': img}
-
+        heatmap = None
         if self.split in ['train', 'val']:
             heatmap_path = self.heatmap_dir / img_path.with_suffix('.png').name
             heatmap = Image.open(heatmap_path).convert('L')
-            sample['heatmap'] = heatmap
         
+        if self.split == 'train' and random.random() < 0.5:
+            img = TF.hflip(img)
+            heatmap = TF.hflip(heatmap)
+        
+        sample = {'image': img}
+        if heatmap is not None:
+            sample['heatmap'] = heatmap
+
         if self.img_transform:
             sample['image'] = self.img_transform(sample['image'])
         if self.heatmap_transform:
