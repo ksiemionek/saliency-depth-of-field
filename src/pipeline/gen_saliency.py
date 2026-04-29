@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 import torch
 from torchvision import transforms
 from TranSalNet.utils.data_process import preprocess_img, postprocess_img

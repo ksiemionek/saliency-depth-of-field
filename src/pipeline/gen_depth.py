@@ -1,8 +1,6 @@
-import cv2
 import torch
 from transformers import AutoImageProcessor, AutoModelForDepthEstimation
 from device import device
-from utils import load_image
 
 
 def load_model():

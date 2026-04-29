@@ -20,7 +20,7 @@ def load_model():
 
 def generate_blur(image, depth, model):
     x, bokeh_img, sess = model
-    
+
     h, w = image.shape[:2]
     I = cv2.resize(image, (w // 2, h // 2), interpolation=cv2.INTER_CUBIC)
     I_depth = cv2.resize(depth, (w // 2, h // 2), interpolation=cv2.INTER_CUBIC)
@@ -39,5 +39,5 @@ def generate_blur(image, depth, model):
 
     bokeh_tensor = sess.run(bokeh_img, feed_dict={x : I})
     bokeh_image = np.reshape(bokeh_tensor, [I.shape[1] * 2, I.shape[2] * 2, 3])
-    
+
     return (bokeh_image * 255).astype(np.uint8)
