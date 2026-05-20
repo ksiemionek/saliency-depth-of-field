@@ -25,11 +25,11 @@ in `densenet.py` and `resnet.py` files.
 
 ### Result - Dense
 
-![image](./results/saliency_dense.png)
+![image](./outputs/saliency_dense.png)
 
 ### Result - Res
 
-![image](./results/saliency_res.png)
+![image](./outputs/saliency_res.png)
 
 ## Bokeh
 
@@ -49,4 +49,4 @@ in `densenet.py` and `resnet.py` files.
 
 ### Result
 
-![image](./results/result.png)
+![image](./outputs/result.png)
