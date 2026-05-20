@@ -4,3 +4,6 @@ __pycache__/
 .venv/
 src/saliency_net/data/DUT-OMRON/
 src/saliency_net/data/SALICON/
+src/saliency_net/checkpoints/*.pth
+src/saliency_net/saliency_results/
+src/pipeline/outputs/
