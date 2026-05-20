@@ -23,14 +23,6 @@ from torch.hub import load_state_dict_from_url
 
 in `densenet.py` and `resnet.py` files.
 
-### Result - Dense
-
-![image](./outputs/saliency_dense.png)
-
-### Result - Res
-
-![image](./outputs/saliency_res.png)
-
 ## Bokeh
 
 ### Setup
@@ -46,7 +38,3 @@ in `densenet.py` and `resnet.py` files.
 
 - [VGG-19](https://download.ai-benchmark.com/s/CCDiWM2sE25x2dW/download/imagenet-vgg-verydeep-19.mat) model and put it into vgg_pretrained/ folder.
 - [PyNET](https://download.ai-benchmark.com/s/RQXWD3eg5gSXLMa/download/PyNET_Bokeh_pretrained.zip) model and put it into models/original/ folder.
-
-### Result
-
-![image](./outputs/result.png)
