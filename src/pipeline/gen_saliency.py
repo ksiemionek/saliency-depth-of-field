@@ -1,21 +1,24 @@
 import numpy as np
 import torch
 from torchvision import transforms
-from TranSalNet.utils.data_process import preprocess_img, postprocess_img
-from device import device
+from pipeline.TranSalNet.utils.data_process import postprocess_img, preprocess_img
+from utils.device import get_torch_device
+import config
 
 
 def load_model(dense=True):
     if dense:
-        from TranSalNet.TranSalNet_Dense import TranSalNet
+        from pipeline.TranSalNet.TranSalNet_Dense import TranSalNet
     else:
-        from TranSalNet.TranSalNet_Res import TranSalNet
+        from pipeline.TranSalNet.TranSalNet_Res import TranSalNet
+
+    device = get_torch_device()
+    weight_path = (
+        f"{config.TRANSALNET_WEIGHTS}/{f"TranSalNet_{'Dense' if dense else 'Res'}.pth"}"
+    )
 
     model = TranSalNet()
-    model.load_state_dict(torch.load(
-        f"./TranSalNet/pretrained_models/TranSalNet_{'Dense' if dense else 'Res'}.pth",
-        map_location=device
-    ))
+    model.load_state_dict(torch.load(weight_path, map_location=device))
     model = model.to(device)
     model.eval()
 
@@ -23,8 +26,9 @@ def load_model(dense=True):
 
 
 def generate_saliency(image_path, model):
+    device = get_torch_device()
     img = preprocess_img(image_path)
-    img = np.array(img) / 255.
+    img = np.array(img) / 255.0
     img = np.expand_dims(np.transpose(img, (2, 0, 1)), axis=0)
     img = torch.from_numpy(img).float().to(device)
 
