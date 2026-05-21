@@ -32,14 +32,13 @@ class ConvResBlock(nn.Module):
 
 
 class ConvNeXtBlock(nn.Module):
-    def __init__(self, channels, dropout=0.25):
+    def __init__(self, channels, dropout):
         super().__init__()
 
         self.conv1 = nn.Conv2d(
             channels, channels, kernel_size=7, padding=3, groups=channels
         )
         self.bn1 = nn.BatchNorm2d(channels)
-
         self.dropout = nn.Dropout2d(dropout)
 
         self.conv2 = nn.Conv2d(channels, channels * 4, kernel_size=1)
@@ -62,7 +61,7 @@ class ConvNeXtBlock(nn.Module):
 
 
 class UpBlock(nn.Module):
-    def __init__(self, in_channels_dec, in_channels_enc, out_channels, dropout=0.25):
+    def __init__(self, in_channels_dec, in_channels_enc, out_channels, dropout):
         super().__init__()
 
         self.up = nn.Sequential(
