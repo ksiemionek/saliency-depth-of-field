@@ -1,0 +1,136 @@
+import torch
+import torch.nn as nn
+import timm
+
+
+class ConvResBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, dropout=0.25):
+        super().__init__()
+
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.dropout1 = nn.Dropout2d(dropout)
+
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        self.act = nn.GELU()
+
+        self.skip = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+        )
+
+    def forward(self, x):
+        skip = self.skip(x)
+        x = self.act(self.bn1(self.conv1(x)))
+        x = self.dropout1(x)
+        x = self.bn2(self.conv2(x))
+        x = x + skip
+        x = self.act(x)
+        return x
+
+
+class ConvNeXtBlock(nn.Module):
+    def __init__(self, channels, dropout=0.25):
+        super().__init__()
+
+        self.conv1 = nn.Conv2d(
+            channels, channels, kernel_size=7, padding=3, groups=channels
+        )
+        self.bn1 = nn.BatchNorm2d(channels)
+
+        self.dropout = nn.Dropout2d(dropout)
+
+        self.conv2 = nn.Conv2d(channels, channels * 4, kernel_size=1)
+        self.bn2 = nn.BatchNorm2d(channels * 4)
+
+        self.conv3 = nn.Conv2d(channels * 4, channels, kernel_size=1)
+        self.bn3 = nn.BatchNorm2d(channels)
+
+        self.act = nn.GELU()
+
+    def forward(self, x):
+        skip = x
+        x = self.act(self.bn1(self.conv1(x)))
+        x = self.dropout(x)
+        x = self.act(self.bn2(self.conv2(x)))
+        x = self.bn3(self.conv3(x))
+        x = x + skip
+        x = self.act(x)
+        return x
+
+
+class SaliencyNet(nn.Module):
+    def __init__(self, model_name, pretrained=True, decoder_dropout=0.25):
+        super().__init__()
+
+        self.encoder = timm.create_model(
+            model_name,
+            pretrained=pretrained,
+            features_only=True,
+            out_indices=(1, 2, 3, 4),
+        )
+
+        channels = self.encoder.feature_info.channels()
+        c1, c2, c3, c4 = channels[0], channels[1], channels[2], channels[3]
+
+        self.context = nn.Sequential(
+            ConvNeXtBlock(c4, dropout=decoder_dropout),
+            ConvNeXtBlock(c4, dropout=decoder_dropout),
+        )
+
+        self.dec1 = ConvResBlock(
+            in_channels=(c4 + c3), out_channels=256, dropout=decoder_dropout
+        )
+        self.up1 = nn.ConvTranspose2d(c4, c4, kernel_size=2, stride=2)
+
+        self.dec2 = ConvResBlock(
+            in_channels=(256 + c2), out_channels=128, dropout=decoder_dropout
+        )
+        self.up2 = nn.ConvTranspose2d(256, 256, kernel_size=2, stride=2)
+
+        self.dec3 = ConvResBlock(
+            in_channels=(128 + c1), out_channels=64, dropout=decoder_dropout
+        )
+        self.up3 = nn.ConvTranspose2d(128, 128, kernel_size=2, stride=2)
+
+        self.upsample = nn.Sequential(
+            nn.Conv2d(64, 32, kernel_size=3, padding=1),
+            nn.GELU(),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.GELU(),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
+            nn.Conv2d(32, 1, kernel_size=1),
+            nn.Sigmoid(),
+        )
+
+    def freeze_encoder(self) -> None:
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+        self.encoder.eval()
+
+    def unfreeze_encoder(self) -> None:
+        for param in self.encoder.parameters():
+            param.requires_grad = True
+
+    def forward(self, x):
+        features = self.encoder(x)
+        f1, f2, f3, f4 = features[0], features[1], features[2], features[3]
+
+        context = self.context(f4)
+
+        x = self.up1(context)
+        x = torch.cat([x, f3], dim=1)
+        x = self.dec1(x)
+
+        x = self.up2(x)
+        x = torch.cat([x, f2], dim=1)
+        x = self.dec2(x)
+
+        x = self.up3(x)
+        x = torch.cat([x, f1], dim=1)
+        x = self.dec3(x)
+
+        return self.upsample(x)
