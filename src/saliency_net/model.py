@@ -61,6 +61,27 @@ class ConvNeXtBlock(nn.Module):
         return x
 
 
+class UpBlock(nn.Module):
+    def __init__(self, in_channels_dec, in_channels_enc, out_channels, dropout=0.25):
+        super().__init__()
+
+        self.up = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
+            nn.Conv2d(in_channels_dec, in_channels_dec, kernel_size=3, padding=1),
+            nn.BatchNorm2d(in_channels_dec),
+            nn.GELU(),
+        )
+
+        self.conv = ConvResBlock(
+            in_channels_dec + in_channels_enc, out_channels, dropout
+        )
+
+    def forward(self, x, skip):
+        x = self.up(x)
+        x = torch.cat([x, skip], dim=1)
+        return self.conv(x)
+
+
 class SaliencyNet(nn.Module):
     def __init__(self, model_name, pretrained=True, decoder_dropout=0.25):
         super().__init__()
@@ -80,20 +101,9 @@ class SaliencyNet(nn.Module):
             ConvNeXtBlock(c4, dropout=decoder_dropout),
         )
 
-        self.dec1 = ConvResBlock(
-            in_channels=(c4 + c3), out_channels=256, dropout=decoder_dropout
-        )
-        self.up1 = nn.ConvTranspose2d(c4, c4, kernel_size=2, stride=2)
-
-        self.dec2 = ConvResBlock(
-            in_channels=(256 + c2), out_channels=128, dropout=decoder_dropout
-        )
-        self.up2 = nn.ConvTranspose2d(256, 256, kernel_size=2, stride=2)
-
-        self.dec3 = ConvResBlock(
-            in_channels=(128 + c1), out_channels=64, dropout=decoder_dropout
-        )
-        self.up3 = nn.ConvTranspose2d(128, 128, kernel_size=2, stride=2)
+        self.up1 = UpBlock(c4, c3, 256, decoder_dropout)
+        self.up2 = UpBlock(256, c2, 128, decoder_dropout)
+        self.up3 = UpBlock(128, c1, 64, decoder_dropout)
 
         self.upsample = nn.Sequential(
             nn.Conv2d(64, 32, kernel_size=3, padding=1),
@@ -106,12 +116,12 @@ class SaliencyNet(nn.Module):
             nn.Sigmoid(),
         )
 
-    def freeze_encoder(self) -> None:
+    def freeze_encoder(self):
         for param in self.encoder.parameters():
             param.requires_grad = False
         self.encoder.eval()
 
-    def unfreeze_encoder(self) -> None:
+    def unfreeze_encoder(self):
         for param in self.encoder.parameters():
             param.requires_grad = True
 
@@ -119,18 +129,10 @@ class SaliencyNet(nn.Module):
         features = self.encoder(x)
         f1, f2, f3, f4 = features[0], features[1], features[2], features[3]
 
-        context = self.context(f4)
+        x = self.context(f4)
 
-        x = self.up1(context)
-        x = torch.cat([x, f3], dim=1)
-        x = self.dec1(x)
-
-        x = self.up2(x)
-        x = torch.cat([x, f2], dim=1)
-        x = self.dec2(x)
-
-        x = self.up3(x)
-        x = torch.cat([x, f1], dim=1)
-        x = self.dec3(x)
+        x = self.up1(x, f3)
+        x = self.up2(x, f2)
+        x = self.up3(x, f1)
 
         return self.upsample(x)
