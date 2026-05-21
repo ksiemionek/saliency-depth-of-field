@@ -3,7 +3,7 @@ import torch
 from PIL import Image
 from pathlib import Path
 import random
-import torchvision.transforms.functional as TF
+import torchvision.transforms as T
 import config
 
 
@@ -66,9 +66,25 @@ class SALICONDataset(Dataset):
             heatmap_path = self.heatmap_dir / img_path.with_suffix(".png").name
             heatmap = Image.open(heatmap_path).convert("L")
 
-        if self.split == "train" and random.random() < 0.5:
-            img = TF.hflip(img)
-            heatmap = TF.hflip(heatmap)
+        if self.split == "train":
+            if random.random() < 0.5:
+                img = T.functional.hflip(img)
+                heatmap = T.functional.hflip(heatmap)
+
+            if random.random() < 0.5:
+                angle = random.uniform(-10, 10)
+                img = T.functional.rotate(
+                    img, angle, interpolation=T.functional.InterpolationMode.BILINEAR
+                )
+                heatmap = T.functional.rotate(
+                    heatmap, angle, interpolation=T.functional.InterpolationMode.NEAREST
+                )
+
+            if random.random() < 0.5:
+                color_jitter = T.ColorJitter(
+                    brightness=0.2, contrast=0.2, saturation=0.2, hue=0.05
+                )
+                img = color_jitter(img)
 
         sample = {"image": img}
         if heatmap is not None:
