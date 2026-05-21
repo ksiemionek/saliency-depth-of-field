@@ -21,7 +21,7 @@ def main() -> None:
     with torch.no_grad():
         pred = model(x).squeeze().cpu().numpy()
 
-    save_saliency(pred, img.size, "saliency_output.png")
+    save_saliency(pred, img.size, "saliency.png")
 
 
 if __name__ == "__main__":
