@@ -6,10 +6,10 @@ from utils.device import get_torch_device
 def load_model():
     device = get_torch_device()
     image_processor = AutoImageProcessor.from_pretrained(
-        "depth-anything/Depth-Anything-V2-Small-hf"
+        "depth-anything/Depth-Anything-V2-Large-hf"
     )
     model = AutoModelForDepthEstimation.from_pretrained(
-        "depth-anything/Depth-Anything-V2-Small-hf"
+        "depth-anything/Depth-Anything-V2-Large-hf"
     ).to(device)
     model.eval()
 
