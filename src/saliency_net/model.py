@@ -83,12 +83,12 @@ class UpBlock(nn.Module):
 
 
 class SaliencyNet(nn.Module):
-    def __init__(self, model_name, pretrained=True, decoder_dropout=0.25):
+    def __init__(self, model_name, dropout):
         super().__init__()
 
         self.encoder = timm.create_model(
             model_name,
-            pretrained=pretrained,
+            pretrained=True,
             features_only=True,
             out_indices=(1, 2, 3, 4),
         )
@@ -97,13 +97,13 @@ class SaliencyNet(nn.Module):
         c1, c2, c3, c4 = channels[0], channels[1], channels[2], channels[3]
 
         self.context = nn.Sequential(
-            ConvNeXtBlock(c4, dropout=decoder_dropout),
-            ConvNeXtBlock(c4, dropout=decoder_dropout),
+            ConvNeXtBlock(c4, dropout=dropout),
+            ConvNeXtBlock(c4, dropout=dropout),
         )
 
-        self.up1 = UpBlock(c4, c3, 256, decoder_dropout)
-        self.up2 = UpBlock(256, c2, 128, decoder_dropout)
-        self.up3 = UpBlock(128, c1, 64, decoder_dropout)
+        self.up1 = UpBlock(c4, c3, 256, dropout)
+        self.up2 = UpBlock(256, c2, 128, dropout)
+        self.up3 = UpBlock(128, c1, 64, dropout)
 
         self.upsample = nn.Sequential(
             nn.Conv2d(64, 32, kernel_size=3, padding=1),

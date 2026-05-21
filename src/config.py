@@ -4,8 +4,7 @@ SALICON_DIR = "saliency_net/data/SALICON"
 DUTOMRON_DIR = "saliency_net/data/DUT-OMRON"
 
 CHECKPOINT_BEST = "saliency_net/checkpoints/best.pth"
-CHECKPOINT_LAST = "saliency_net/checkpoints/last.pth"
-SALIENCY_RESULTS = "saliency_net/saliency_results"
+SALIENCY_OUTPUTS = "saliency_net/saliency_outputs"
 
 PIPELINE_SALIENCY = "pipeline/outputs/saliency.png"
 PIPELINE_DEPTH = "pipeline/outputs/depth.png"

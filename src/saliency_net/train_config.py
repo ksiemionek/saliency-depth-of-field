@@ -1,8 +1,8 @@
 IMAGE_SIZE = (192, 256)
 BACKBONE = "tf_efficientnetv2_s.in1k"
 
-MEAN = (0.485, 0.456, 0.406)
-STD = (0.229, 0.224, 0.225)
+MEAN = (0.5, 0.5, 0.5)
+STD = (0.5, 0.5, 0.5)
 
 NUM_EPOCHS = 40
 BATCH_SIZE = 32
