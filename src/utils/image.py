@@ -8,7 +8,7 @@ def load_image(path: str) -> np.ndarray:
     return np.asarray(Image.open(path).convert("RGB"))
 
 
-def save_saliency_png(
+def save_saliency(
     pred: np.ndarray,
     original_size: tuple[int, int],
     out_path: str,

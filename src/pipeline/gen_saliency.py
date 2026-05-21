@@ -14,7 +14,7 @@ def load_model(dense=True):
 
     device = get_torch_device()
     weight_path = (
-        f"{config.TRANSALNET_WEIGHTS}/{f"TranSalNet_{'Dense' if dense else 'Res'}.pth"}"
+        f"{config.TRANSALNET}/{f"TranSalNet_{'Dense' if dense else 'Res'}.pth"}"
     )
 
     model = TranSalNet()

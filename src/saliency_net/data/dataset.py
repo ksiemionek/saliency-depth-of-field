@@ -9,7 +9,7 @@ import config
 
 class DUTOMRONDataset(Dataset):
     def __init__(self, img_transform=None, heatmap_transform=None):
-        self.root_dir = Path(config.DUT_OMRON_DIR)
+        self.root_dir = Path(config.DUTOMRON_DIR)
         self.img_transform = img_transform
         self.heatmap_transform = heatmap_transform
 

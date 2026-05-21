@@ -15,7 +15,7 @@ def load_model():
 
     sess = tf.compat.v1.Session()
     saver = tf.compat.v1.train.Saver()
-    saver.restore(sess, config.PYNET_CHECKPOINT)
+    saver.restore(sess, config.PYNET)
 
     return x, bokeh_img, sess
 

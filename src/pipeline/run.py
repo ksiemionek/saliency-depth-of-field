@@ -5,10 +5,10 @@ from utils.image import load_image
 
 
 def main():
-    image = load_image(config.PREVIEW_IMAGE)
+    image = load_image(config.IMAGE)
 
     saliency_model = gen_saliency.load_model(dense=True)
-    saliency = gen_saliency.generate_saliency(config.PREVIEW_IMAGE, saliency_model)
+    saliency = gen_saliency.generate_saliency(config.IMAGE, saliency_model)
     cv2.imwrite(config.PIPELINE_SALIENCY, saliency)
 
     depth_processor, depth_model = gen_depth.load_model()
