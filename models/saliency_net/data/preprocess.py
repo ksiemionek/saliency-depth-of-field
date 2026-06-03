@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 from scipy.ndimage import gaussian_filter
-import config
+from models import config
 
 MAT_DIR = Path(config.DUT_OMRON_DIR) / "DUT-OMRON-eye-fixations" / "mat"
 IMG_DIR = Path(config.DUT_OMRON_DIR) / "DUT-OMRON-image"

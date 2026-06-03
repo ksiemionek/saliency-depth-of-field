@@ -1,6 +1,6 @@
 import torch
 from transformers import AutoImageProcessor, AutoModelForDepthEstimation
-from utils.device import get_torch_device
+from backend.utils.device import get_torch_device
 
 
 def load_model():

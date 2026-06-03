@@ -1,5 +1,5 @@
 from torchvision import transforms
-import saliency_net.train_config as train_config
+from models.saliency_net import train_config
 
 
 image_transform = transforms.Compose(

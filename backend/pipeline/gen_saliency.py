@@ -1,16 +1,16 @@
 import numpy as np
 import torch
 from torchvision import transforms
-from pipeline.TranSalNet.utils.data_process import postprocess_img, preprocess_img
-from utils.device import get_torch_device
-import config
+from backend.pipeline.TranSalNet.utils.data_process import postprocess_img, preprocess_img
+from backend.utils.device import get_torch_device
+from backend import config
 
 
 def load_model(dense=True):
     if dense:
-        from pipeline.TranSalNet.TranSalNet_Dense import TranSalNet
+        from backend.pipeline.TranSalNet.TranSalNet_Dense import TranSalNet
     else:
-        from pipeline.TranSalNet.TranSalNet_Res import TranSalNet
+        from backend.pipeline.TranSalNet.TranSalNet_Res import TranSalNet
 
     device = get_torch_device()
     weight_path = (

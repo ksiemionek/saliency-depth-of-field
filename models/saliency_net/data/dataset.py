@@ -4,7 +4,7 @@ from PIL import Image
 from pathlib import Path
 import random
 import torchvision.transforms as T
-import config
+from models import config
 
 
 class DUTOMRONDataset(Dataset):

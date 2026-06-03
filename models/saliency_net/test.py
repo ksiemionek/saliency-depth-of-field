@@ -1,11 +1,11 @@
 import torch
 from PIL import Image
-import config
-import saliency_net.train_config as train_config
-from saliency_net.model import SaliencyNet
-from saliency_net.transforms import image_transform
-from utils.device import get_torch_device
-from utils.image import save_saliency
+from models import config
+from models.saliency_net import train_config
+from models.saliency_net.model import SaliencyNet
+from models.saliency_net.transforms import image_transform
+from models.utils.device import get_torch_device
+from models.utils.image import save_saliency
 
 
 def main() -> None:

@@ -1,11 +1,11 @@
 import numpy as np
 import cv2
-import config
+from backend import config
 import tensorflow as tf
 
 tf.compat.v1.disable_v2_behavior()
 
-from pipeline.PyNET_Bokeh.model import PyNET
+from backend.pipeline.PyNET_Bokeh.model import PyNET
 
 
 def load_model():
