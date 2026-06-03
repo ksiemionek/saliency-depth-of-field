@@ -98,3 +98,46 @@ class SALICONDataset(Dataset):
             sample["heatmap"] = self.heatmap_transform(sample["heatmap"])
 
         return sample
+
+
+class VATDDataset(Dataset):
+    def __init__(
+        self, split, img_transform=None, depth_transform=None, blur_transform=None
+    ):
+        self.root_dir = Path(config.VATD_DIR)
+        self.split = split
+        self.img_transform = img_transform
+        self.depth_transform = depth_transform
+        self.blur_transform = blur_transform
+
+        self.img_dir = self.root_dir / self.split / "input"
+        self.img_list = sorted(self.img_dir.glob("*.JPG"))
+
+        self.depth_dir = self.root_dir / self.split / "depth"
+        self.blur_dir = self.root_dir / self.split / "2_8"
+
+    def __len__(self):
+        return len(self.img_list)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_path = self.img_list[idx]
+        depth_path = self.depth_dir / img_path.with_suffix(".png").name
+        blur_path = self.blur_dir / img_path.name
+
+        img = Image.open(img_path).convert("RGB")
+        depth = Image.open(depth_path).convert("L")
+        blur = Image.open(blur_path).convert("RGB")
+
+        sample = {"image": img, "depth": depth, "blur": blur}
+
+        if self.img_transform:
+            sample["image"] = self.img_transform(sample["image"])
+        if self.depth_transform:
+            sample["depth"] = self.depth_transform(sample["depth"])
+        if self.blur_transform:
+            sample["blur"] = self.blur_transform(sample["blur"])
+
+        return sample
