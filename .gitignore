@@ -2,8 +2,8 @@
 **/.DS_Store
 __pycache__/
 .venv/
-src/saliency_net/data/DUT-OMRON/
-src/saliency_net/data/SALICON/
-src/saliency_net/checkpoints/*.pth
-src/saliency_net/saliency_results/
-src/pipeline/outputs/
+models/saliency_net/data/DUT-OMRON/
+models/saliency_net/data/SALICON/
+models/saliency_net/checkpoints/*.pth
+models/saliency_net/saliency_outputs/
+backend/pipeline/outputs/
