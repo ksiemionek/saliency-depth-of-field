@@ -12,6 +12,7 @@ dependencies = [
     "pandas>=3.0.3",
     "pillow>=12.2.0",
     "python-multipart>=0.0.30",
+    "ruff>=0.15.15",
     "scikit-image>=0.26.0",
     "scipy>=1.17.1",
     "tensorflow>=2.21.0",
@@ -21,4 +22,11 @@ dependencies = [
     "tqdm>=4.67.3",
     "transformers>=5.8.1",
     "uvicorn>=0.48.0",
+]
+
+[tool.ruff]
+exclude = [
+    ".venv",
+    "backend/pipeline/TranSalNet",
+    "backend/pipeline/PyNET_Bokeh",
 ]

@@ -2,8 +2,6 @@ import cv2
 from backend import config
 from backend.pipeline import gen_depth, gen_saliency, gen_blur, blend_maps
 from backend.utils.image import load_image
-import numpy as np
-from PIL import Image
 
 
 def main():

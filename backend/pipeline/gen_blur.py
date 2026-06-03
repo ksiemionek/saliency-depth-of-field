@@ -1,11 +1,11 @@
-import numpy as np
 import cv2
-from backend import config
+import numpy as np
 import tensorflow as tf
 
-tf.compat.v1.disable_v2_behavior()
-
+from backend import config
 from backend.pipeline.PyNET_Bokeh.model import PyNET
+
+tf.compat.v1.disable_v2_behavior()
 
 
 def load_model():
@@ -24,22 +24,24 @@ def generate_blur(image, depth, model):
     x, bokeh_img, sess = model
 
     h, w = image.shape[:2]
-    I = cv2.resize(image, (w // 2, h // 2), interpolation=cv2.INTER_CUBIC)
+    image_res = cv2.resize(image, (w // 2, h // 2), interpolation=cv2.INTER_CUBIC)
     I_depth = cv2.resize(depth, (w // 2, h // 2), interpolation=cv2.INTER_CUBIC)
 
-    new_height = (I.shape[0] // 32) * 32
-    new_width = (I.shape[1] // 32) * 32
-    I = I[:new_height, :new_width, :]
+    new_height = (image_res.shape[0] // 32) * 32
+    new_width = (image_res.shape[1] // 32) * 32
+    image_res = image_res[:new_height, :new_width, :]
     I_depth = I_depth[:new_height, :new_width]
 
-    I_temp = np.zeros((I.shape[0], I.shape[1], 4))
-    I_temp[:, :, 0:3] = I
+    I_temp = np.zeros((image_res.shape[0], image_res.shape[1], 4))
+    I_temp[:, :, 0:3] = image_res
     I_temp[:, :, 3] = I_depth
 
-    I = np.float32(I_temp) / 255.0
-    I = np.reshape(I, [1, I.shape[0], I.shape[1], 4])
+    image_res = np.float32(I_temp) / 255.0
+    image_res = np.reshape(image_res, [1, image_res.shape[0], image_res.shape[1], 4])
 
-    bokeh_tensor = sess.run(bokeh_img, feed_dict={x: I})
-    bokeh_image = np.reshape(bokeh_tensor, [I.shape[1] * 2, I.shape[2] * 2, 3])
+    bokeh_tensor = sess.run(bokeh_img, feed_dict={x: image_res})
+    bokeh_image = np.reshape(
+        bokeh_tensor, [image_res.shape[1] * 2, image_res.shape[2] * 2, 3]
+    )
 
     return (bokeh_image * 255).astype(np.uint8)
