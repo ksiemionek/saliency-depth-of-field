@@ -1,6 +1,8 @@
 import random
 from pathlib import Path
 
+import numpy as np
+import scipy.io
 import torch
 import torchvision.transforms as T
 from PIL import Image
@@ -43,15 +45,34 @@ class DUTOMRONDataset(Dataset):
 
 
 class SALICONDataset(Dataset):
-    def __init__(self, split, img_transform=None, heatmap_transform=None):
+    def __init__(
+        self, split, img_transform=None, heatmap_transform=None, fixation_transform=None
+    ):
         self.root_dir = Path(config.SALICON_DIR)
         self.split = split
         self.img_transform = img_transform
         self.heatmap_transform = heatmap_transform
+        self.fixation_transform = fixation_transform
 
         self.img_dir = self.root_dir / "images" / self.split
         self.img_list = sorted(self.img_dir.glob("*.jpg"))
         self.heatmap_dir = self.root_dir / "maps" / self.split
+        self.fixation_dir = self.root_dir / "fixations" / self.split
+
+    def load_fixation(self, mat_path):
+        data = scipy.io.loadmat(mat_path)
+        h, w = (int(v) for v in data["resolution"][0])
+        fmap = np.zeros((h, w), dtype=np.uint8)
+        gaze = data["gaze"]
+        for i in range(gaze.shape[0]):
+            fixations = gaze[i, 0]["fixations"]
+            if fixations.size == 0:
+                continue
+            xs = fixations[:, 0].astype(int)
+            ys = fixations[:, 1].astype(int)
+            valid = (xs >= 0) & (xs < w) & (ys >= 0) & (ys < h)
+            fmap[ys[valid], xs[valid]] = 255
+        return Image.fromarray(fmap, mode="L")
 
     def __len__(self):
         return len(self.img_list)
@@ -64,14 +85,19 @@ class SALICONDataset(Dataset):
         img = Image.open(img_path).convert("RGB")
 
         heatmap = None
+        fixation = None
         if self.split in ["train", "val"]:
             heatmap_path = self.heatmap_dir / img_path.with_suffix(".png").name
             heatmap = Image.open(heatmap_path).convert("L")
+            fixation = self.load_fixation(
+                self.fixation_dir / img_path.with_suffix(".mat").name
+            )
 
         if self.split == "train":
             if random.random() < 0.5:
                 img = T.functional.hflip(img)
                 heatmap = T.functional.hflip(heatmap)
+                fixation = T.functional.hflip(fixation)
 
             if random.random() < 0.5:
                 angle = random.uniform(-10, 10)
@@ -80,6 +106,11 @@ class SALICONDataset(Dataset):
                 )
                 heatmap = T.functional.rotate(
                     heatmap, angle, interpolation=T.functional.InterpolationMode.NEAREST
+                )
+                fixation = T.functional.rotate(
+                    fixation,
+                    angle,
+                    interpolation=T.functional.InterpolationMode.NEAREST,
                 )
 
             if random.random() < 0.5:
@@ -91,11 +122,15 @@ class SALICONDataset(Dataset):
         sample = {"image": img}
         if heatmap is not None:
             sample["heatmap"] = heatmap
+        if fixation is not None:
+            sample["fixation"] = fixation
 
         if self.img_transform:
             sample["image"] = self.img_transform(sample["image"])
         if self.heatmap_transform:
             sample["heatmap"] = self.heatmap_transform(sample["heatmap"])
+        if self.fixation_transform and "fixation" in sample:
+            sample["fixation"] = self.fixation_transform(sample["fixation"])
 
         return sample
 
