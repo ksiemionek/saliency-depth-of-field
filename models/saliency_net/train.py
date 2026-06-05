@@ -8,32 +8,32 @@ from models.data.dataset import SALICONDataset
 from models.saliency_net import train_config
 from models.saliency_net.losses import saliency_loss
 from models.saliency_net.model import SaliencyNet
-from models.saliency_net.transforms import heatmap_transform, image_transform
+from models.saliency_net.transforms import (
+    fixation_transform,
+    heatmap_transform,
+    image_transform,
+)
 from models.utils.device import get_torch_device
 from models.utils.image import save_saliency
 
 
 class Metrics:
     def __init__(self):
-        self.loss = 0.0
-        self.kl = 0.0
-        self.cc = 0.0
+        self.totals = {"loss": 0.0, "kl": 0.0, "cc": 0.0, "sim": 0.0, "nss": 0.0}
         self.steps = 0
 
     def update(self, metrics: dict[str, float]):
-        self.loss += metrics["total"]
-        self.kl += metrics["kl"]
-        self.cc += metrics["cc"]
+        self.totals["loss"] += metrics["total"]
+        self.totals["kl"] += metrics["kl"]
+        self.totals["cc"] += metrics["cc"]
+        self.totals["sim"] += metrics["sim"]
+        self.totals["nss"] += metrics["nss"]
         self.steps += 1
 
     def averages(self) -> dict[str, float]:
         if self.steps == 0:
-            return {"loss": 0.0, "kl": 0.0, "cc": 0.0}
-        return {
-            "loss": self.loss / self.steps,
-            "kl": self.kl / self.steps,
-            "cc": self.cc / self.steps,
-        }
+            return {k: 0.0 for k in self.totals}
+        return {k: v / self.steps for k, v in self.totals.items()}
 
 
 def dataloaders() -> tuple[DataLoader, DataLoader]:
@@ -41,11 +41,13 @@ def dataloaders() -> tuple[DataLoader, DataLoader]:
         split="train",
         img_transform=image_transform,
         heatmap_transform=heatmap_transform,
+        fixation_transform=fixation_transform,
     )
     val_dataset = SALICONDataset(
         split="val",
         img_transform=image_transform,
         heatmap_transform=heatmap_transform,
+        fixation_transform=fixation_transform,
     )
 
     train_loader = DataLoader(
@@ -66,15 +68,10 @@ def dataloaders() -> tuple[DataLoader, DataLoader]:
 
 
 def net_optimizer(model: SaliencyNet) -> torch.optim.AdamW:
-    encoder_params = list(model.encoder.parameters())
-    decoder_params = [
-        p for n, p in model.named_parameters() if not n.startswith("encoder.")
-    ]
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
     return torch.optim.AdamW(
-        [
-            {"params": encoder_params, "lr": train_config.ENCODER_LR},
-            {"params": decoder_params, "lr": train_config.DECODER_LR},
-        ],
+        trainable_params,
+        lr=train_config.DECODER_LR,
         weight_decay=train_config.WEIGHT_DECAY,
     )
 
@@ -101,23 +98,18 @@ def train_epoch(
     epoch: int,
 ) -> Metrics:
     model.train()
-
-    if epoch < train_config.FREEZE_EPOCHS:
-        model.freeze_encoder()
-    else:
-        model.unfreeze_encoder()
-
     metrics = Metrics()
     desc = f"Epoch {epoch + 1}/{train_config.NUM_EPOCHS} [train]"
 
     for batch in tqdm(loader, desc=desc):
         imgs = batch["image"].to(device)
         heatmaps = batch["heatmap"].to(device)
+        fixations = batch["fixation"].to(device)
 
         optimizer.zero_grad()
 
         preds = model(imgs)
-        loss, step_metrics = saliency_loss(preds, heatmaps)
+        loss, step_metrics = saliency_loss(preds, heatmaps, fixations)
 
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), train_config.GRAD_CLIP_NORM)
@@ -139,9 +131,10 @@ def validate(
     for batch in tqdm(loader, desc=desc):
         imgs = batch["image"].to(device)
         heatmaps = batch["heatmap"].to(device)
+        fixations = batch["fixation"].to(device)
 
         preds = model(imgs)
-        _, step_metrics = saliency_loss(preds, heatmaps)
+        _, step_metrics = saliency_loss(preds, heatmaps, fixations)
 
         metrics.update(step_metrics)
 
@@ -175,8 +168,14 @@ def main():
         val_avg = val_metrics.averages()
 
         print(
-            f"train loss {train_avg['loss']:.4f} (kl {train_avg['kl']:.4f}, cc {train_avg['cc']:.4f}) | "
-            f"val loss {val_avg['loss']:.4f} (kl {val_avg['kl']:.4f}, cc {val_avg['cc']:.4f})"
+            f"[train] loss {train_avg['loss']:.4f} | "
+            f"KL {train_avg['kl']:.4f} CC {train_avg['cc']:.4f} "
+            f"SIM {train_avg['sim']:.4f} NSS {train_avg['nss']:.4f}"
+        )
+        print(
+            f"[val]   loss {val_avg['loss']:.4f} | "
+            f"KL {val_avg['kl']:.4f} CC {val_avg['cc']:.4f} "
+            f"SIM {val_avg['sim']:.4f} NSS {val_avg['nss']:.4f}"
         )
 
         save_epoch_preview(model, device, epoch + 1)
