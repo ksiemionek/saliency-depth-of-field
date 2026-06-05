@@ -1,137 +1,121 @@
 import torch
 import torch.nn as nn
-import timm
+from transformers import AutoModel
 
 
 class ConvResBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, dropout=0.25):
+    def __init__(self, in_channels, out_channels, dropout):
         super().__init__()
 
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.gn1 = nn.GroupNorm(8, out_channels)
         self.dropout1 = nn.Dropout2d(dropout)
 
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.gn2 = nn.GroupNorm(8, out_channels)
 
         self.act = nn.GELU()
 
         self.skip = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_channels),
+            nn.GroupNorm(8, out_channels),
         )
 
     def forward(self, x):
         skip = self.skip(x)
-        x = self.act(self.bn1(self.conv1(x)))
+        x = self.act(self.gn1(self.conv1(x)))
         x = self.dropout1(x)
-        x = self.bn2(self.conv2(x))
+        x = self.gn2(self.conv2(x))
         x = x + skip
         x = self.act(x)
         return x
-
-
-class ConvNeXtBlock(nn.Module):
-    def __init__(self, channels, dropout):
-        super().__init__()
-
-        self.conv1 = nn.Conv2d(
-            channels, channels, kernel_size=7, padding=3, groups=channels
-        )
-        self.bn1 = nn.BatchNorm2d(channels)
-        self.dropout = nn.Dropout2d(dropout)
-
-        self.conv2 = nn.Conv2d(channels, channels * 4, kernel_size=1)
-        self.bn2 = nn.BatchNorm2d(channels * 4)
-
-        self.conv3 = nn.Conv2d(channels * 4, channels, kernel_size=1)
-        self.bn3 = nn.BatchNorm2d(channels)
-
-        self.act = nn.GELU()
-
-    def forward(self, x):
-        skip = x
-        x = self.act(self.bn1(self.conv1(x)))
-        x = self.dropout(x)
-        x = self.act(self.bn2(self.conv2(x)))
-        x = self.bn3(self.conv3(x))
-        x = x + skip
-        x = self.act(x)
-        return x
-
-
-class UpBlock(nn.Module):
-    def __init__(self, in_channels_dec, in_channels_enc, out_channels, dropout):
-        super().__init__()
-
-        self.up = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
-            nn.Conv2d(in_channels_dec, in_channels_dec, kernel_size=3, padding=1),
-            nn.BatchNorm2d(in_channels_dec),
-            nn.GELU(),
-        )
-
-        self.conv = ConvResBlock(
-            in_channels_dec + in_channels_enc, out_channels, dropout
-        )
-
-    def forward(self, x, skip):
-        x = self.up(x)
-        x = torch.cat([x, skip], dim=1)
-        return self.conv(x)
 
 
 class SaliencyNet(nn.Module):
     def __init__(self, model_name, dropout):
         super().__init__()
 
-        self.encoder = timm.create_model(
-            model_name,
-            pretrained=True,
-            features_only=True,
-            out_indices=(1, 2, 3, 4),
+        self.encoder = AutoModel.from_pretrained(model_name)
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+
+        c_dim = self.encoder.config.hidden_size
+
+        proj_dim = 64
+
+        self.proj_f1 = nn.Sequential(
+            nn.Conv2d(c_dim, proj_dim, 1), nn.GroupNorm(8, proj_dim), nn.GELU()
+        )
+        self.proj_f2 = nn.Sequential(
+            nn.Conv2d(c_dim, proj_dim, 1), nn.GroupNorm(8, proj_dim), nn.GELU()
+        )
+        self.proj_f3 = nn.Sequential(
+            nn.Conv2d(c_dim, proj_dim, 1), nn.GroupNorm(8, proj_dim), nn.GELU()
+        )
+        self.proj_f4 = nn.Sequential(
+            nn.Conv2d(c_dim, proj_dim, 1), nn.GroupNorm(8, proj_dim), nn.GELU()
         )
 
-        channels = self.encoder.feature_info.channels()
-        c1, c2, c3, c4 = channels[0], channels[1], channels[2], channels[3]
-
-        self.context = nn.Sequential(
-            ConvNeXtBlock(c4, dropout=dropout),
-            ConvNeXtBlock(c4, dropout=dropout),
+        self.reduce = nn.Sequential(
+            nn.Conv2d(256, 128, kernel_size=3, padding=1),
+            nn.GroupNorm(8, 128),
+            nn.GELU(),
         )
 
-        self.up1 = UpBlock(c4, c3, 256, dropout)
-        self.up2 = UpBlock(256, c2, 128, dropout)
-        self.up3 = UpBlock(128, c1, 64, dropout)
+        self.decoder_head = ConvResBlock(128, 128, dropout=dropout)
 
         self.upsample = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
+            nn.Conv2d(128, 64, kernel_size=3, padding=1),
+            nn.GELU(),
+            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
             nn.Conv2d(64, 32, kernel_size=3, padding=1),
             nn.GELU(),
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
-            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.Conv2d(32, 16, kernel_size=3, padding=1),
             nn.GELU(),
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
-            nn.Conv2d(32, 1, kernel_size=1),
+            nn.Conv2d(16, 16, kernel_size=3, padding=1),
+            nn.GELU(),
+            nn.Conv2d(16, 1, kernel_size=1),
             nn.Sigmoid(),
         )
 
-    def freeze_encoder(self):
-        for param in self.encoder.parameters():
-            param.requires_grad = False
-        self.encoder.eval()
+    def reshape(self, tokens, h, w):
+        seq_len = h * w
+        tokens = tokens[:, -seq_len:, :]
+        B, _, C = tokens.shape
+        return tokens.transpose(1, 2).reshape(B, C, h, w)
 
-    def unfreeze_encoder(self):
-        for param in self.encoder.parameters():
-            param.requires_grad = True
+    def train(self, mode: bool = True):
+        super().train(mode)
+        self.encoder.eval()
+        return self
 
     def forward(self, x):
-        features = self.encoder(x)
-        f1, f2, f3, f4 = features[0], features[1], features[2], features[3]
+        patch_h = x.shape[2] // 16
+        patch_w = x.shape[3] // 16
 
-        x = self.context(f4)
+        with torch.no_grad():
+            outputs = self.encoder(
+                pixel_values=x,
+                output_hidden_states=True,
+                interpolate_pos_encoding=True,
+            )
+            hidden_states = outputs.hidden_states
 
-        x = self.up1(x, f3)
-        x = self.up2(x, f2)
-        x = self.up3(x, f1)
+        f1 = self.reshape(hidden_states[3], patch_h, patch_w)
+        f2 = self.reshape(hidden_states[6], patch_h, patch_w)
+        f3 = self.reshape(hidden_states[9], patch_h, patch_w)
+        f4 = self.reshape(hidden_states[12], patch_h, patch_w)
 
-        return self.upsample(x)
+        f1 = self.proj_f1(f1)
+        f2 = self.proj_f2(f2)
+        f3 = self.proj_f3(f3)
+        f4 = self.proj_f4(f4)
+
+        out = torch.cat([f1, f2, f3, f4], dim=1)
+        out = self.reduce(out)
+
+        out = self.decoder_head(out)
+        return self.upsample(out)
