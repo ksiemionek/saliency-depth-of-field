@@ -1,24 +1,20 @@
-IMAGE_SIZE = (192, 256)
-BACKBONE = "tf_efficientnetv2_s.in1k"
+IMAGE_SIZE = (288, 384)
+BACKBONE = "facebook/dinov3-vits16-pretrain-lvd1689m"
 
-MEAN = (0.5, 0.5, 0.5)
-STD = (0.5, 0.5, 0.5)
+# mean and std from dinov3
+MEAN = (0.485, 0.456, 0.406)
+STD = (0.229, 0.224, 0.225)
 
-NUM_EPOCHS = 40
+NUM_EPOCHS = 50
 BATCH_SIZE = 32
 NUM_WORKERS = 4
 
-ENCODER_LR = 3e-6
-DECODER_LR = 1e-4
-
-# WEIGHT_DECAY = 1e-4
-WEIGHT_DECAY = 1e-3
+DECODER_LR = 5e-5
+WEIGHT_DECAY = 1e-4
 GRAD_CLIP_NORM = 1.0
-# DROPOUT = 0.25
-DROPOUT = 0.35
-
-FREEZE_EPOCHS = 3
-WARMUP_EPOCHS = 2
+DROPOUT = 0.4
 
 PATIENCE = 10
 MIN_DELTA = 1e-4
+
+W_KL, W_CC, W_SIM, W_NSS = 10.0, 2.0, 1.0, 1.0
