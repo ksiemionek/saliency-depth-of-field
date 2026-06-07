@@ -1,7 +1,8 @@
 import torch
 from PIL import Image
+
 from models import config
-from models.saliency_net import train_config
+from models.saliency_net import model_config
 from models.saliency_net.model import SaliencyNet
 from models.saliency_net.transforms import image_transform
 from models.utils.device import get_torch_device
@@ -11,7 +12,7 @@ from models.utils.image import save_saliency
 def main() -> None:
     device = get_torch_device()
 
-    model = SaliencyNet(train_config.BACKBONE, dropout=train_config.DROPOUT).to(device)
+    model = SaliencyNet(model_config.BACKBONE, dropout=model_config.DROPOUT).to(device)
     model.load_state_dict(torch.load(config.CHECKPOINT_BEST, map_location=device))
     model.eval()
 

@@ -1,19 +1,19 @@
 from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
-from models.saliency_net import train_config
+from models.saliency_net import model_config
 
 image_transform = transforms.Compose(
     [
-        transforms.Resize(train_config.IMAGE_SIZE),
+        transforms.Resize(model_config.IMAGE_SIZE),
         transforms.ToTensor(),
-        transforms.Normalize(mean=train_config.MEAN, std=train_config.STD),
+        transforms.Normalize(mean=model_config.MEAN, std=model_config.STD),
     ]
 )
 
 heatmap_transform = transforms.Compose(
     [
-        transforms.Resize(train_config.IMAGE_SIZE),
+        transforms.Resize(model_config.IMAGE_SIZE),
         transforms.ToTensor(),
     ]
 )
@@ -21,7 +21,7 @@ heatmap_transform = transforms.Compose(
 fixation_transform = transforms.Compose(
     [
         transforms.Resize(
-            train_config.IMAGE_SIZE, interpolation=InterpolationMode.NEAREST
+            model_config.IMAGE_SIZE, interpolation=InterpolationMode.NEAREST
         ),
         transforms.ToTensor(),
     ]

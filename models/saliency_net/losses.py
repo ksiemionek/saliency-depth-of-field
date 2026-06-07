@@ -1,6 +1,6 @@
 import torch
 
-from models.saliency_net.train_config import W_CC, W_KL, W_NSS, W_SIM
+from models.saliency_net.model_config import W_CC, W_KL, W_NSS, W_SIM
 
 
 def kl_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:

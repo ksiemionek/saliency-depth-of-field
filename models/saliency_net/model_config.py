@@ -1,5 +1,7 @@
 IMAGE_SIZE = (288, 384)
 BACKBONE = "facebook/dinov3-vits16-pretrain-lvd1689m"
+FEATURE_LAYERS = [3, 6, 9, 12]
+DECODER_DIM = 128
 
 # mean and std from dinov3
 MEAN = (0.485, 0.456, 0.406)
@@ -9,8 +11,9 @@ NUM_EPOCHS = 50
 BATCH_SIZE = 32
 NUM_WORKERS = 4
 
+ENCODER_LR = 1e-7
 DECODER_LR = 5e-5
-WEIGHT_DECAY = 1e-4
+WEIGHT_DECAY = 5e-4
 GRAD_CLIP_NORM = 1.0
 DROPOUT = 0.4
 
