@@ -2,120 +2,91 @@ import torch
 import torch.nn as nn
 from transformers import AutoModel
 
+from models.saliency_net.model_config import FEATURE_LAYERS
+
 
 class ConvResBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, dropout):
+    def __init__(self, channels: int, dropout: float):
         super().__init__()
-
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
-        self.gn1 = nn.GroupNorm(8, out_channels)
-        self.dropout1 = nn.Dropout2d(dropout)
-
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
-        self.gn2 = nn.GroupNorm(8, out_channels)
-
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.gn1 = nn.GroupNorm(8, channels)
+        self.drop = nn.Dropout2d(dropout)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)
+        self.gn2 = nn.GroupNorm(8, channels)
         self.act = nn.GELU()
 
-        self.skip = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
-            nn.GroupNorm(8, out_channels),
-        )
-
-    def forward(self, x):
-        skip = self.skip(x)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        res = x
         x = self.act(self.gn1(self.conv1(x)))
-        x = self.dropout1(x)
+        x = self.drop(x)
         x = self.gn2(self.conv2(x))
-        x = x + skip
-        x = self.act(x)
-        return x
+        return self.act(x + res)
+
+
+def projection_block(in_ch: int, out_ch: int) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Conv2d(in_ch, out_ch, kernel_size=1),
+        nn.GroupNorm(8, out_ch),
+        nn.GELU(),
+    )
+
+
+def upsample_block(in_ch: int, out_ch: int) -> nn.Sequential:
+    return nn.Sequential(
+        nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
+        nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
+        nn.GELU(),
+    )
 
 
 class SaliencyNet(nn.Module):
-    def __init__(self, model_name, dropout):
+    def __init__(self, model_name: str, dropout: float, decoder_dim: int):
         super().__init__()
 
         self.encoder = AutoModel.from_pretrained(model_name)
         for param in self.encoder.parameters():
             param.requires_grad = False
 
-        c_dim = self.encoder.config.hidden_size
+        cfg = self.encoder.config
+        self.patch_size = cfg.patch_size
+        self.num_register_tokens = cfg.num_register_tokens
+        c_dim = cfg.hidden_size
 
-        proj_dim = 64
-
-        self.proj_f1 = nn.Sequential(
-            nn.Conv2d(c_dim, proj_dim, 1), nn.GroupNorm(8, proj_dim), nn.GELU()
-        )
-        self.proj_f2 = nn.Sequential(
-            nn.Conv2d(c_dim, proj_dim, 1), nn.GroupNorm(8, proj_dim), nn.GELU()
-        )
-        self.proj_f3 = nn.Sequential(
-            nn.Conv2d(c_dim, proj_dim, 1), nn.GroupNorm(8, proj_dim), nn.GELU()
-        )
-        self.proj_f4 = nn.Sequential(
-            nn.Conv2d(c_dim, proj_dim, 1), nn.GroupNorm(8, proj_dim), nn.GELU()
+        self.proj = nn.ModuleList(
+            [projection_block(c_dim, decoder_dim) for _ in FEATURE_LAYERS]
         )
 
-        self.reduce = nn.Sequential(
-            nn.Conv2d(256, 128, kernel_size=3, padding=1),
-            nn.GroupNorm(8, 128),
-            nn.GELU(),
-        )
+        self.decoder = ConvResBlock(decoder_dim, dropout=dropout)
 
-        self.decoder_head = ConvResBlock(128, 128, dropout=dropout)
-
+        upsample_channels = [decoder_dim, 64, 32, 16]
         self.upsample = nn.Sequential(
+            *[
+                upsample_block(upsample_channels[i], upsample_channels[i + 1])
+                for i in range(len(upsample_channels) - 1)
+            ],
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
-            nn.Conv2d(128, 64, kernel_size=3, padding=1),
-            nn.GELU(),
-            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
-            nn.Conv2d(64, 32, kernel_size=3, padding=1),
-            nn.GELU(),
-            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
-            nn.Conv2d(32, 16, kernel_size=3, padding=1),
-            nn.GELU(),
-            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False),
-            nn.Conv2d(16, 16, kernel_size=3, padding=1),
-            nn.GELU(),
             nn.Conv2d(16, 1, kernel_size=1),
             nn.Sigmoid(),
         )
 
-    def reshape(self, tokens, h, w):
-        seq_len = h * w
-        tokens = tokens[:, -seq_len:, :]
+    def reshape(self, tokens: torch.Tensor, h: int, w: int) -> torch.Tensor:
+        tokens = tokens[:, 1 + self.num_register_tokens :, :]
         B, _, C = tokens.shape
         return tokens.transpose(1, 2).reshape(B, C, h, w)
 
-    def train(self, mode: bool = True):
-        super().train(mode)
-        self.encoder.eval()
-        return self
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        patch_h = x.shape[2] // self.patch_size
+        patch_w = x.shape[3] // self.patch_size
 
-    def forward(self, x):
-        patch_h = x.shape[2] // 16
-        patch_w = x.shape[3] // 16
+        hidden_states = self.encoder(
+            pixel_values=x,
+            output_hidden_states=True,
+            interpolate_pos_encoding=True,
+        ).hidden_states
 
-        with torch.no_grad():
-            outputs = self.encoder(
-                pixel_values=x,
-                output_hidden_states=True,
-                interpolate_pos_encoding=True,
-            )
-            hidden_states = outputs.hidden_states
+        out = sum(
+            proj(self.reshape(hidden_states[i], patch_h, patch_w))
+            for proj, i in zip(self.proj, FEATURE_LAYERS)
+        )
 
-        f1 = self.reshape(hidden_states[3], patch_h, patch_w)
-        f2 = self.reshape(hidden_states[6], patch_h, patch_w)
-        f3 = self.reshape(hidden_states[9], patch_h, patch_w)
-        f4 = self.reshape(hidden_states[12], patch_h, patch_w)
-
-        f1 = self.proj_f1(f1)
-        f2 = self.proj_f2(f2)
-        f3 = self.proj_f3(f3)
-        f4 = self.proj_f4(f4)
-
-        out = torch.cat([f1, f2, f3, f4], dim=1)
-        out = self.reduce(out)
-
-        out = self.decoder_head(out)
-        return self.upsample(out)
+        return self.upsample(self.decoder(out))

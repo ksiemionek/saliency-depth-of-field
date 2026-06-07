@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from models import config
 from models.data.dataset import SALICONDataset
-from models.saliency_net import train_config
+from models.saliency_net import model_config
 from models.saliency_net.losses import saliency_loss
 from models.saliency_net.model import SaliencyNet
 from models.saliency_net.transforms import (
@@ -53,26 +53,33 @@ def dataloaders() -> tuple[DataLoader, DataLoader]:
     train_loader = DataLoader(
         train_dataset,
         shuffle=True,
-        batch_size=train_config.BATCH_SIZE,
-        num_workers=train_config.NUM_WORKERS,
+        batch_size=model_config.BATCH_SIZE,
+        num_workers=model_config.NUM_WORKERS,
         persistent_workers=True,
     )
     val_loader = DataLoader(
         val_dataset,
         shuffle=False,
-        batch_size=train_config.BATCH_SIZE,
-        num_workers=train_config.NUM_WORKERS,
+        batch_size=model_config.BATCH_SIZE,
+        num_workers=model_config.NUM_WORKERS,
         persistent_workers=True,
     )
     return train_loader, val_loader
 
 
 def net_optimizer(model: SaliencyNet) -> torch.optim.AdamW:
-    trainable_params = [p for p in model.parameters() if p.requires_grad]
+    for block in model.encoder.model.layer[-4:]:
+        for p in block.parameters():
+            p.requires_grad = True
+
     return torch.optim.AdamW(
-        trainable_params,
-        lr=train_config.DECODER_LR,
-        weight_decay=train_config.WEIGHT_DECAY,
+        [
+            {"params": model.encoder.parameters(), "lr": model_config.ENCODER_LR},
+            {"params": model.decoder.parameters(), "lr": model_config.DECODER_LR},
+            {"params": model.proj.parameters(), "lr": model_config.DECODER_LR},
+            {"params": model.upsample.parameters(), "lr": model_config.DECODER_LR},
+        ],
+        weight_decay=model_config.WEIGHT_DECAY,
     )
 
 
@@ -99,7 +106,7 @@ def train_epoch(
 ) -> Metrics:
     model.train()
     metrics = Metrics()
-    desc = f"Epoch {epoch + 1}/{train_config.NUM_EPOCHS} [train]"
+    desc = f"Epoch {epoch + 1}/{model_config.NUM_EPOCHS} [train]"
 
     for batch in tqdm(loader, desc=desc):
         imgs = batch["image"].to(device)
@@ -112,7 +119,7 @@ def train_epoch(
         loss, step_metrics = saliency_loss(preds, heatmaps, fixations)
 
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), train_config.GRAD_CLIP_NORM)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), model_config.GRAD_CLIP_NORM)
         optimizer.step()
 
         metrics.update(step_metrics)
@@ -126,7 +133,7 @@ def validate(
 ) -> Metrics:
     model.eval()
     metrics = Metrics()
-    desc = f"Epoch {epoch + 1}/{train_config.NUM_EPOCHS} [val]"
+    desc = f"Epoch {epoch + 1}/{model_config.NUM_EPOCHS} [val]"
 
     for batch in tqdm(loader, desc=desc):
         imgs = batch["image"].to(device)
@@ -146,20 +153,21 @@ def main():
 
     train_loader, val_loader = dataloaders()
     model = SaliencyNet(
-        train_config.BACKBONE,
-        dropout=train_config.DROPOUT,
+        model_config.BACKBONE,
+        dropout=model_config.DROPOUT,
+        decoder_dim=model_config.DECODER_DIM,
     ).to(device)
 
     optimizer = net_optimizer(model)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, train_config.NUM_EPOCHS
+        optimizer, model_config.NUM_EPOCHS
     )
 
     best_val_loss = float("inf")
     patience_counter = 0
 
-    for epoch in range(train_config.NUM_EPOCHS):
+    for epoch in range(model_config.NUM_EPOCHS):
         train_metrics = train_epoch(model, train_loader, optimizer, device, epoch)
         val_metrics = validate(model, val_loader, device, epoch)
         scheduler.step()
@@ -180,16 +188,16 @@ def main():
 
         save_epoch_preview(model, device, epoch + 1)
 
-        if val_avg["loss"] < best_val_loss - train_config.MIN_DELTA:
+        if val_avg["loss"] < best_val_loss - model_config.MIN_DELTA:
             best_val_loss = val_avg["loss"]
             patience_counter = 0
             torch.save(model.state_dict(), config.CHECKPOINT_BEST)
             print(f"Saved best model: {config.CHECKPOINT_BEST}\n")
         else:
             patience_counter += 1
-            print(f"No improvement {patience_counter}/{train_config.PATIENCE}\n")
+            print(f"No improvement {patience_counter}/{model_config.PATIENCE}\n")
 
-        if patience_counter >= train_config.PATIENCE:
+        if patience_counter >= model_config.PATIENCE:
             print("Early stopping")
             break
 
