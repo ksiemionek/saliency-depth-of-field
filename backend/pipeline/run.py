@@ -1,15 +1,15 @@
 import cv2
+
 from backend import config
-from backend.pipeline import gen_depth, gen_saliency, gen_blur, blend_maps
+from backend.pipeline import blend_maps, gen_blur, gen_depth, gen_saliency
 from backend.utils.image import load_image
 
 
 def main():
     image = load_image(config.IMAGE)
 
-    saliency_model = gen_saliency.load_model(dense=True)
+    saliency_model = gen_saliency.load_model()
     saliency = gen_saliency.generate_saliency(config.IMAGE, saliency_model)
-    # saliency = np.asarray(Image.open("saliency.png"))
     cv2.imwrite(config.PIPELINE_SALIENCY, saliency)
 
     depth_processor, depth_model = gen_depth.load_model()

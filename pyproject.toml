@@ -27,6 +27,5 @@ dependencies = [
 [tool.ruff]
 exclude = [
     ".venv",
-    "backend/pipeline/TranSalNet",
     "backend/pipeline/PyNET_Bokeh",
 ]

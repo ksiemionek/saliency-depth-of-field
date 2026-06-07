@@ -1,46 +1,37 @@
 import numpy as np
 import torch
-from torchvision import transforms
-from backend.pipeline.TranSalNet.utils.data_process import (
-    postprocess_img,
-    preprocess_img,
-)
-from backend.utils.device import get_torch_device
+from PIL import Image
+
 from backend import config
+from backend.utils.device import get_torch_device
+from models.saliency_net import model_config
+from models.saliency_net.model import SaliencyNet
+from models.saliency_net.transforms import image_transform
 
 
-def load_model(dense=True):
-    if dense:
-        from backend.pipeline.TranSalNet.TranSalNet_Dense import TranSalNet
-    else:
-        from backend.pipeline.TranSalNet.TranSalNet_Res import TranSalNet
-
+def load_model():
     device = get_torch_device()
-    weight_path = (
-        f"{config.TRANSALNET}/{f'TranSalNet_{"Dense" if dense else "Res"}.pth'}"
-    )
-
-    model = TranSalNet()
-    model.load_state_dict(torch.load(weight_path, map_location=device))
-    model = model.to(device)
+    model = SaliencyNet(
+        model_config.BACKBONE,
+        dropout=model_config.DROPOUT,
+        decoder_dim=model_config.DECODER_DIM,
+    ).to(device)
+    model.load_state_dict(torch.load(config.SALIENCY_CHECKPOINT, map_location=device))
     model.eval()
 
     return model
 
 
-def generate_saliency(image_path, model):
+def generate_saliency(image_path: str, model) -> np.ndarray:
     device = get_torch_device()
-    img = preprocess_img(image_path)
-    img = np.array(img) / 255.0
-    img = np.expand_dims(np.transpose(img, (2, 0, 1)), axis=0)
-    img = torch.from_numpy(img).float().to(device)
+    img = Image.open(image_path).convert("RGB")
+    x = image_transform(img).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        pred = model(img)
+        pred = model(x).squeeze().cpu().numpy()
 
-    to_pil = transforms.ToPILImage()
-    pred_pil = to_pil(pred.squeeze().cpu())
+    pred = (pred - pred.min()) / (pred.max() - pred.min())
+    saliency = Image.fromarray((pred * 255).astype(np.uint8))
+    saliency = saliency.resize(img.size)
 
-    saliency_map = postprocess_img(pred_pil, image_path)
-
-    return saliency_map
+    return np.asarray(saliency)
