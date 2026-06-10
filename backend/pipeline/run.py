@@ -5,11 +5,11 @@ from backend.pipeline import blend_maps, gen_blur, gen_depth, gen_saliency
 from backend.utils.image import load_image
 
 
-def main():
+def run_pipeline():
     image = load_image(config.IMAGE)
 
     saliency_model = gen_saliency.load_model()
-    saliency = gen_saliency.generate_saliency(config.IMAGE, saliency_model)
+    saliency = gen_saliency.generate_saliency(image, saliency_model)
     cv2.imwrite(config.PIPELINE_SALIENCY, saliency)
 
     depth_processor, depth_model = gen_depth.load_model()
@@ -25,4 +25,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_pipeline()

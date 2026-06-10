@@ -22,16 +22,19 @@ def load_model():
     return model
 
 
-def generate_saliency(image_path: str, model) -> np.ndarray:
+def generate_saliency(image: np.ndarray, model) -> np.ndarray:
     device = get_torch_device()
-    img = Image.open(image_path).convert("RGB")
-    x = image_transform(img).unsqueeze(0).to(device)
+
+    h, w = image.shape[:2]
+
+    pil = Image.fromarray(image)
+    x = image_transform(pil).unsqueeze(0).to(device)
 
     with torch.no_grad():
         pred = model(x).squeeze().cpu().numpy()
 
     pred = (pred - pred.min()) / (pred.max() - pred.min())
     saliency = Image.fromarray((pred * 255).astype(np.uint8))
-    saliency = saliency.resize(img.size)
+    saliency = saliency.resize((w, h))
 
     return np.asarray(saliency)
