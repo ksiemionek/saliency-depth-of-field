@@ -1,0 +1,136 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100svh;
+  background: var(--bg);
+}
+
+.app-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  flex: 1;
+  justify-content: center;
+  padding: 48px 24px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.upload-card {
+  width: 100%;
+  padding: 48px 32px;
+  text-align: center;
+  background: var(--card-bg);
+  border: 1.5px dashed var(--border);
+  border-radius: 16px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.upload-card--drag {
+  border-color: var(--text);
+  background: var(--card-bg-hover);
+}
+
+.upload-card--disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.upload-icon {
+  display: flex;
+  justify-content: center;
+  color: var(--icon);
+  margin-bottom: 20px;
+}
+
+.upload-title {
+  margin: 0 0 15px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-h);
+  line-height: 1.4;
+}
+
+.upload-hint {
+  margin: 0 0 24px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.upload-btn {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--btn-bg);
+  color: var(--icon);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background: var(--btn-bg-hover);
+  border-color: var(--text);
+}
+
+.upload-btn:focus-visible {
+  outline: 2px solid #9ca3af;
+  outline-offset: 2px;
+}
+
+.upload-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.upload-filename {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid;
+  border-color: var(--border-subtle);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error {
+  margin: 0;
+  font-size: 14px;
+  color: #dc2626;
+}
+
+.result-viewer {
+  width: 100%;
+}
+
+.result-viewer img {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+}
